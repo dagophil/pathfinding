@@ -94,6 +94,9 @@ class DefaultVisitor(object):
     """Visitor that does nothing.
     """
 
+    def beginvisit(self, other):
+        pass
+
     def visit(self, other):
         pass
 
@@ -109,16 +112,17 @@ class DrawVisitor(object):
         self.data = data
         self.tmpdata = numpy.array(data)
         self.oldopen = []
-        plt.ion()
-        self.ax = plt.gca()
-        self.fig = plt.gcf()
-        self.im = self.ax.imshow(numpy.swapaxes(self.data, 0, 1), interpolation="nearest")
-        plt.draw()
+        self.ax = None
+        self.fig = None
+        self.im = None
 
     def beginvisit(self, other):
         self.tmpdata[other.start] = 3
         self.tmpdata[other.goal] = 3
-        self.im.set_data(numpy.swapaxes(self.tmpdata, 0, 1))
+        plt.ion()
+        self.ax = plt.gca()
+        self.fig = plt.gcf()
+        self.im = self.ax.imshow(numpy.swapaxes(self.tmpdata, 0, 1), interpolation="nearest")
         plt.draw()
 
     def visit(self, other):
