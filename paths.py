@@ -40,7 +40,7 @@ def dist_euclidean(a, b):
     return numpy.linalg.norm(numpy.array(b)-numpy.array(a))
 
 
-def dist_zero(a, b):
+def dist_zero(a=None, b=None):
     """Returns zero.
     """
     return 0
@@ -118,7 +118,8 @@ class DrawVisitor(object):
 
     def beginvisit(self, other):
         self.tmpdata[other.start] = 3
-        self.tmpdata[other.goal] = 3
+        if other.goal is not None:
+            self.tmpdata[other.goal] = 3
         plt.ion()
         self.ax = plt.gca()
         self.fig = plt.gcf()
@@ -135,16 +136,17 @@ class DrawVisitor(object):
         plt.draw()
 
     def endvisit(self, other):
-        for p in other.path():
-            self.tmpdata[p] = 3
-        self.im.set_data(numpy.swapaxes(self.tmpdata, 0, 1))
-        plt.draw()
+        if other.goal is not None:
+            for p in other.path():
+                self.tmpdata[p] = 3
+            self.im.set_data(numpy.swapaxes(self.tmpdata, 0, 1))
+            plt.draw()
         plt.ioff()
         plt.show()
 
 
 class PQueue(object):
-    """Priority queue that uses a list and bisect.bisect_right.
+    """Simple priority queue that uses a list and bisect.bisect_right.
     """
 
     def __init__(self, scorer):
@@ -202,8 +204,9 @@ class AStar(object):
         visitor.beginvisit(self)
         while not self.openqueue.empty():
             current = self.openqueue.get()
-            if current == self.goal:
-                break
+            if self.goal is not None:
+                if current == self.goal:
+                    break
 
             self.openqueue.pop()
             self.closedset.append(current)
@@ -225,13 +228,31 @@ class AStar(object):
     def openitems(self):
         return self.openqueue.items
 
-    def path(self):
-        node = self.goal
+    def path(self, goal=None):
+        if goal is None and self.goal is None:
+            raise Exception("AStar.path(): No goal given.")
+        if goal is None:
+            node = self.goal
+        else:
+            node = goal
         nodes = [node]
         while node in self.came_from:
             node = self.came_from[node]
             nodes.append(node)
         return nodes
+
+
+class Dijkstra(AStar):
+    """Dijkstra path finder algorithm.
+    """
+
+    def __init__(self, data):
+        super(Dijkstra, self).__init__(data)
+
+    def run(self, start, goal=None, heuristic=dist_zero, visitor=None, neighborfunc=neighbors8):
+        if heuristic is not dist_zero:
+            print "WARNING: Parameter heuristic in Dijkstra.run() will be ignored."
+        super(Dijkstra, self).run(start, goal=goal, heuristic=dist_zero, visitor=visitor, neighborfunc=neighborfunc)
 
 
 def main():
@@ -248,12 +269,19 @@ def main():
 
     pfrom = (35, 99)
     pto = (56, 2)
+
+    # AStar
     pathfinder = AStar(data)
     vis = DrawVisitor(data)
-    pathfinder.run(pfrom, pto, heuristic=dist_euclidean, neighborfunc=neighbors8, visitor=vis)
-    # pathfinder.run(pfrom, pto, heuristic=dist_euclidean, neighborfunc=neighbors4, visitor=vis)
+    # pathfinder.run(pfrom, pto, heuristic=dist_euclidean, neighborfunc=neighbors8, visitor=vis)
+    pathfinder.run(pfrom, pto, heuristic=dist_euclidean, neighborfunc=neighbors4, visitor=vis)
     # pathfinder.run(pfrom, pto, heuristic=dist_direct, neighborfunc=neighbors4, visitor=vis)
-    # pathfinder.run(pfrom, pto, heuristic=dist_zero, neighborfunc=neighbors8, visitor=vis)
+
+    # # Dijkstra
+    # pathfinder = Dijkstra(data)
+    # vis = DrawVisitor(data)
+    # pathfinder.run(pfrom, pto, neighborfunc=neighbors4, visitor=vis)
+    # # pathfinder.run(pfrom, pto, neighborfunc=neighbors8, visitor=vis)
 
     return 0
 
