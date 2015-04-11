@@ -3,6 +3,7 @@ import vigra
 import numpy
 import os
 import matplotlib.pyplot as plt
+import argparse
 
 
 def parse_image(filename, tile_x, tile_y):
@@ -255,33 +256,72 @@ class Dijkstra(AStar):
         super(Dijkstra, self).run(start, goal=goal, heuristic=dist_zero, visitor=visitor, neighborfunc=neighborfunc)
 
 
+def parse_command_line():
+    """Parse the command line arguments.
+    """
+    parser = argparse.ArgumentParser(description="Test and visualize path finding algorithms.",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--algo", type=str, default="astar",
+                        choices=["astar", "dijkstra"],
+                        help="The path finding algorithm.")
+    parser.add_argument("--data", type=str, default="data.npy",
+                        help="Filename of numpy array with the data or image to parse.")
+    parser.add_argument("--tile_x", type=int, default=100,
+                        help="Number of tiles in x direction when parsing an image.")
+    parser.add_argument("--tile_y", type=int, default=100,
+                        help="Number of tiles in y direction when parsing an image.")
+    parser.add_argument("--start", type=int, nargs=2, default=[35, 99],
+                        help="Coordinates of the start point.")
+    parser.add_argument("--goal", type=int, nargs=2, default=[56, 2],
+                        help="Coordinates of the goal point.")
+    parser.add_argument("--neighborhood", type=int, default=4,
+                        choices=[4, 8],
+                        help="The used neighborhood.")
+    parser.add_argument("--heuristic", type=str, default="euclidean",
+                        choices=["euclidean", "L1"],
+                        help="The heuristic distance function.")
+
+    args = parser.parse_args()
+
+    args.start = tuple(args.start)
+    args.goal = tuple(args.goal)
+
+    neighborhood_funcs = {4: neighbors4,
+                          8: neighbors8}
+    assert args.neighborhood in neighborhood_funcs
+    args.neighborhood = neighborhood_funcs[args.neighborhood]
+
+    heuristic_funcs = {"euclidean": dist_euclidean,
+                       "L1": dist_direct}
+    assert args.heuristic in heuristic_funcs
+    args.heuristic = heuristic_funcs[args.heuristic]
+
+    path_classes = {"astar": AStar,
+                    "dijkstra": Dijkstra}
+    assert args.algo in path_classes
+    args.algo = path_classes[args.algo]
+
+    return args
+
+
 def main():
-    if os.path.isfile("data.npy"):
-        data = numpy.load("data.npy")
-        print "loaded from data.npy"
-    elif os.path.isfile("raw.png"):
-        data = parse_image("raw.png", 100, 100)
-        numpy.save("data.npy", data)
-        print "loaded from raw.png"
+    args = parse_command_line()
+
+    if not os.path.isfile(args.data):
+        print "File not found:", args.data
+        return 1
+
+    filename, fileext = os.path.splitext(args.data)
+    if fileext == ".npy":
+        data = numpy.load(args.data)
+        print "Loaded numpy array:", args.data
     else:
-        print "Could not find data.npy and could not find raw.png."
-        sys.exit(1)
+        data = parse_image(args.data, args.tile_x, args.tile_y)
+        print "Loaded image:", args.data
 
-    pfrom = (35, 99)
-    pto = (56, 2)
-
-    # AStar
-    pathfinder = AStar(data)
     vis = DrawVisitor(data)
-    # pathfinder.run(pfrom, pto, heuristic=dist_euclidean, neighborfunc=neighbors8, visitor=vis)
-    pathfinder.run(pfrom, pto, heuristic=dist_euclidean, neighborfunc=neighbors4, visitor=vis)
-    # pathfinder.run(pfrom, pto, heuristic=dist_direct, neighborfunc=neighbors4, visitor=vis)
-
-    # # Dijkstra
-    # pathfinder = Dijkstra(data)
-    # vis = DrawVisitor(data)
-    # pathfinder.run(pfrom, pto, neighborfunc=neighbors4, visitor=vis)
-    # # pathfinder.run(pfrom, pto, neighborfunc=neighbors8, visitor=vis)
+    pathfinder = args.algo(data)
+    pathfinder.run(args.start, args.goal, heuristic=args.heuristic, neighborfunc=args.neighborhood, visitor=vis)
 
     return 0
 
