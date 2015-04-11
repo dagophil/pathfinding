@@ -440,6 +440,7 @@ def main():
     else:
         data = parse_image(args.data, args.tile_x, args.tile_y)
         print "Loaded image:", args.data
+    # TODO: Save/Load the array as boolean array (values 0 and 1 instead of 0 and 4).
 
     vis = DrawVisitor(data)
     pathfinder = args.algoclass(data)
