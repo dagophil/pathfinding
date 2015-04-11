@@ -182,10 +182,10 @@ class AStar(object):
 
     def __init__(self, data):
         self.data = data
-        self.came_from = {}
+        self.came_from = None
         self.start = None
         self.goal = None
-        self.closedset = []
+        self.closedset = None
         self.openqueue = None
 
     def run(self, start, goal, heuristic=dist_euclidean, visitor=None, neighborfunc=neighbors8):
@@ -256,16 +256,110 @@ class Dijkstra(AStar):
         super(Dijkstra, self).run(start, goal=goal, heuristic=dist_zero, visitor=visitor, neighborfunc=neighborfunc)
 
 
-# class BellmanFord(object):
-#     """Bellman ford path finder algorithm.
-#     """
-#
-#     def __init__(self, data):
-#         self.data = data
-#         self.came_from = {}
-#
-#     def run(self, start, goal, heuristic=dist_euclidean, visitor=None, neighborfunc=neighbors8):
-#         pass
+class BreadthFirst(object):
+    """Breadth first search path finder algorithm.
+    """
+
+    def __init__(self, data):
+        self.data = data
+        self.came_from = None
+        self.start = None
+        self.goal = None
+        self.openlist = None
+
+    def run(self, start, goal=None, visitor=None, neighborfunc=neighbors8):
+        if visitor is None:
+            visitor = DefaultVisitor()
+
+        self.start = start
+        self.goal = goal
+        self.came_from = {}
+        import Queue
+        self.openlist = Queue.deque()
+        self.openlist.append(start)
+
+        visitor.beginvisit(self)
+        while len(self.openlist) > 0:
+            current = self.openlist.pop()
+            if self.goal is not None:
+                if current == self.goal:
+                    break
+
+            for p in neighborfunc(current, self.data):
+                if p not in self.came_from and p != start:
+                    self.came_from[p] = current
+                    self.openlist.appendleft(p)
+            visitor.visit(self)
+        visitor.endvisit(self)
+
+    def openitems(self):
+        return self.openlist
+
+    def path(self, goal=None):
+        if goal is None and self.goal is None:
+            raise Exception("BreadthFirst.path(): No goal given.")
+        if goal is None:
+            node = self.goal
+        else:
+            node = goal
+        nodes = [node]
+        while node in self.came_from:
+            node = self.came_from[node]
+            nodes.append(node)
+        return nodes
+
+
+class DepthFirst(object):
+    """Depth first search path finder algorithm.
+    """
+
+    def __init__(self, data):
+        self.data = data
+        self.came_from = None
+        self.start = None
+        self.goal = None
+        self.openlist = None
+
+    def run(self, start, goal=None, visitor=None, neighborfunc=neighbors8):
+        if visitor is None:
+            visitor = DefaultVisitor()
+
+        self.start = start
+        self.goal = goal
+        self.came_from = {}
+        import Queue
+        self.openlist = Queue.deque()
+        self.openlist.append(start)
+
+        visitor.beginvisit(self)
+        while len(self.openlist) > 0:
+            current = self.openlist.pop()
+            if self.goal is not None:
+                if current == self.goal:
+                    break
+
+            for p in neighborfunc(current, self.data):
+                if p not in self.came_from and p != start:
+                    self.came_from[p] = current
+                    self.openlist.append(p)
+            visitor.visit(self)
+        visitor.endvisit(self)
+
+    def openitems(self):
+        return self.openlist
+
+    def path(self, goal=None):
+        if goal is None and self.goal is None:
+            raise Exception("BreadthFirst.path(): No goal given.")
+        if goal is None:
+            node = self.goal
+        else:
+            node = goal
+        nodes = [node]
+        while node in self.came_from:
+            node = self.came_from[node]
+            nodes.append(node)
+        return nodes
 
 
 def parse_command_line():
@@ -274,7 +368,7 @@ def parse_command_line():
     parser = argparse.ArgumentParser(description="Test and visualize path finding algorithms.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--algo", type=str, default="astar",
-                        choices=["astar", "dijkstra"],
+                        choices=["astar", "dijkstra", "breadth_first", "depth_first"],
                         help="The path finding algorithm.")
     parser.add_argument("--data", type=str, default="data.npy",
                         help="Filename of numpy array with the data or image to parse.")
@@ -309,13 +403,23 @@ def parse_command_line():
     heuristic = heuristic_funcs[args.heuristic]
 
     if args.algo == "astar":
-        args.additional_args = {"heuristic": heuristic,
-                           "neighborfunc": neighborfunc}
+        args.additional_args = {"goal": args.goal,
+                                "heuristic": heuristic,
+                                "neighborfunc": neighborfunc}
     elif args.algo == "dijkstra":
-        args.additional_args = {"neighborfunc": neighborfunc}
+        args.additional_args = {"goal": args.goal,
+                                "neighborfunc": neighborfunc}
+    elif args.algo == "breadth_first":
+        args.additional_args = {"goal": args.goal,
+                                "neighborfunc": neighborfunc}
+    elif args.algo == "depth_first":
+        args.additional_args = {"goal": args.goal,
+                                "neighborfunc": neighborfunc}
 
     path_classes = {"astar": AStar,
-                    "dijkstra": Dijkstra}
+                    "dijkstra": Dijkstra,
+                    "breadth_first": BreadthFirst,
+                    "depth_first": DepthFirst}
     assert args.algo in path_classes
     args.algoclass = path_classes[args.algo]
 
@@ -339,7 +443,7 @@ def main():
 
     vis = DrawVisitor(data)
     pathfinder = args.algoclass(data)
-    pathfinder.run(args.start, args.goal, visitor=vis, **args.additional_args)
+    pathfinder.run(args.start, visitor=vis, **args.additional_args)
 
     return 0
 
