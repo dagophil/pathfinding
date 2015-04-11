@@ -256,6 +256,18 @@ class Dijkstra(AStar):
         super(Dijkstra, self).run(start, goal=goal, heuristic=dist_zero, visitor=visitor, neighborfunc=neighborfunc)
 
 
+# class BellmanFord(object):
+#     """Bellman ford path finder algorithm.
+#     """
+#
+#     def __init__(self, data):
+#         self.data = data
+#         self.came_from = {}
+#
+#     def run(self, start, goal, heuristic=dist_euclidean, visitor=None, neighborfunc=neighbors8):
+#         pass
+
+
 def parse_command_line():
     """Parse the command line arguments.
     """
@@ -289,17 +301,23 @@ def parse_command_line():
     neighborhood_funcs = {4: neighbors4,
                           8: neighbors8}
     assert args.neighborhood in neighborhood_funcs
-    args.neighborhood = neighborhood_funcs[args.neighborhood]
+    neighborfunc = neighborhood_funcs[args.neighborhood]
 
     heuristic_funcs = {"euclidean": dist_euclidean,
                        "L1": dist_direct}
     assert args.heuristic in heuristic_funcs
-    args.heuristic = heuristic_funcs[args.heuristic]
+    heuristic = heuristic_funcs[args.heuristic]
+
+    if args.algo == "astar":
+        args.additional_args = {"heuristic": heuristic,
+                           "neighborfunc": neighborfunc}
+    elif args.algo == "dijkstra":
+        args.additional_args = {"neighborfunc": neighborfunc}
 
     path_classes = {"astar": AStar,
                     "dijkstra": Dijkstra}
     assert args.algo in path_classes
-    args.algo = path_classes[args.algo]
+    args.algoclass = path_classes[args.algo]
 
     return args
 
@@ -320,8 +338,8 @@ def main():
         print "Loaded image:", args.data
 
     vis = DrawVisitor(data)
-    pathfinder = args.algo(data)
-    pathfinder.run(args.start, args.goal, heuristic=args.heuristic, neighborfunc=args.neighborhood, visitor=vis)
+    pathfinder = args.algoclass(data)
+    pathfinder.run(args.start, args.goal, visitor=vis, **args.additional_args)
 
     return 0
 
