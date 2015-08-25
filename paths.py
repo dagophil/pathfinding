@@ -125,7 +125,9 @@ class DrawVisitor(object):
         self.ax = plt.gca()
         self.fig = plt.gcf()
         self.im = self.ax.imshow(numpy.swapaxes(self.tmpdata, 0, 1), interpolation="nearest")
+        self.ax.set_title(other.__class__.__name__)
         plt.draw()
+        plt.pause(1e-6)
 
     def visit(self, other):
         for p in self.oldopen:
@@ -135,6 +137,7 @@ class DrawVisitor(object):
             self.tmpdata[p] = 2
         self.im.set_data(numpy.swapaxes(self.tmpdata, 0, 1))
         plt.draw()
+        plt.pause(1e-6)
 
     def endvisit(self, other):
         if other.goal is not None:
